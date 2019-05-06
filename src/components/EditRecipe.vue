@@ -1,27 +1,30 @@
 <template>
-  <div class="add-recipe container">
-    <h2 class="center-align indigo-text">
-      Add Recipe
+  <div
+    v-if="recipe"
+    class="edit-recipe"
+  >
+    <h2>
+      Edit the "{{ recipe.title }}" Recipe
     </h2>
-    <form @submit.prevent="addRecipe">
+    <form @submit.prevent="editRecipe">
       <div class="field title">
         <label for="title">
           Recipe Title:
         </label>
         <input
-          v-model="title"
+          v-model="recipe.title"
           type="text"
           name="title"
         >
       </div>
       <div
-        v-for="(ing, i) in ingredients"
+        v-for="(ing, i) in recipe.ingredients"
         :key="i"
         class="field"
       >
         <label for="ingredient">Ingredient:</label>
         <input
-          v-model="ingredients[i]"
+          v-model="recipe.ingredients[i]"
           type="text"
           name="ingredient"
         >
@@ -51,7 +54,7 @@
           {{ feedback }}
         </p>
         <button class="btn lightgreen">
-          Add Recipe
+          Update Recipe
         </button>
       </div>
     </form>
@@ -61,24 +64,36 @@
 <script>
 import db from '@/firebase/init';
 import slugify from 'slugify';
+
 export default {
-  name: 'AddRecipe',
+  name: 'EditRecipe',
   data() {
     return {
-      title: null,
-      ingredients: [],
-      slug: null,
+      recipe: null,
       another: null,
       feedback: null,
     };
   },
+  created() {
+    let ref = db
+      .collection('recipes')
+      .where('slug', '==', this.$route.params.recipe_slug);
+    ref.get().then(snapshot => {
+      snapshot.forEach(doc => {
+        this.recipe = doc.data();
+        this.recipe.id = doc.id;
+      });
+    });
+  },
   methods: {
-    addRecipe() {
-      if (this.title) {
+    editRecipe() {
+      //Add to database firestore
+      console.log(this.recipe.title, this.recipe.ingredients);
+      if (this.recipe.title) {
         this.feedback = null;
 
         // create slug
-        this.slug = slugify(this.title, {
+        this.recipe.slug = slugify(this.recipe.title, {
           replacement: '-',
           remove: /[$*_+~>()'"!\-:@]/g,
           lower: true,
@@ -87,10 +102,11 @@ export default {
         //Add to database firestore
         db
           .collection('recipes')
-          .add({
-            title: this.title,
-            ingredients: this.ingredients,
-            slug: this.slug,
+          .doc(this.recipe.id)
+          .update({
+            title: this.recipe.title,
+            ingredients: this.recipe.ingredients,
+            slug: this.recipe.slug,
           })
           .then(() => {
             this.$router.push({ name: 'Index' });
@@ -104,8 +120,7 @@ export default {
     },
     addIngredient() {
       if (this.another) {
-        this.ingredients.push(this.another);
-        console.log(this.ingredients);
+        this.recipe.ingredients.push(this.another);
         this.another = null;
         this.feedback = null;
       } else {
@@ -113,7 +128,7 @@ export default {
       }
     },
     deleteIng(Ing) {
-      this.ingredients = this.ingredients.filter(ingredient => {
+      this.recipe.ingredients = this.recipe.ingredients.filter(ingredient => {
         if (ingredient === Ing) {
           return false;
         } else {
@@ -126,21 +141,21 @@ export default {
 </script>
 
 <style>
-.add-recipe {
+.edit-recipe {
   margin-top: 60px;
   padding: 20px;
   max-width: 500px;
 }
-.add-recipe h2 {
+.edit-recipe h2 {
   font-size: 2em;
   margin: 20px auto;
 }
-.add-recipe .field {
+.edit-recipe .field {
   margin: 20px auto;
   position: relative;
 }
 
-.add-recipe .delete {
+.edit-recipe .delete {
   color: #aaa;
   position: absolute;
   right: 0px;
@@ -149,3 +164,4 @@ export default {
   cursor: pointer;
 }
 </style>
+
